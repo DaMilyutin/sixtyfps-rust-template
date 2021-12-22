@@ -1,14 +1,14 @@
 [package]
-name = "{{project-name}}"
+name = "rs60_async_calls"
 version = "0.1.0"
-authors = ["{{authors}}"]
-edition = "2018"
+authors = ["dmilyutin"]
+edition = "2021"
 build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sixtyfps = "0.1"
+sixtyfps = "0.1.5"
 
 [build-dependencies]
-sixtyfps-build = "0.1"
+sixtyfps-build = "0.1.5"
