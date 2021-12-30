@@ -1,13 +1,18 @@
+use std::borrow::Borrow;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
-use std::{collections::HashMap, rc::Rc, vec::Vec};
+use std::{cell::RefCell, rc::Rc};
 sixtyfps::include_modules!();
-mod sync60;
-use sixtyfps::Model;
-use sync60::AsyncVec;
 
-fn nextId() -> i32 {
+// mod id_map_data;
+// use id_map_data::nextId;
+// use id_map_data::IdMapData;
+
+use sixtyfps::Model;
+use std::{collections::HashMap, vec::Vec};
+
+pub fn nextId() -> i32 {
     unsafe {
         static mut n: i32 = 0 as i32;
         const period: i32 = (1 << 15) as i32;
@@ -15,14 +20,15 @@ fn nextId() -> i32 {
         n
     }
 }
-struct IdMapData {
-    id2row: HashMap<i32, usize>,
-    row2id: Vec<i32>,
-    data: Rc<sixtyfps::VecModel<ListItemData>>,
+
+pub struct IdMapData {
+    pub id2row: HashMap<i32, usize>,
+    pub row2id: Vec<i32>,
+    pub data: Rc<sixtyfps::VecModel<ListItemData>>,
 }
 
 impl IdMapData {
-    fn default() -> IdMapData {
+    pub fn default() -> IdMapData {
         IdMapData {
             id2row: HashMap::<i32, usize>::default(),
             row2id: Vec::<i32>::default(),
@@ -30,7 +36,7 @@ impl IdMapData {
         }
     }
 
-    fn push(&mut self, id: i32) {
+    pub fn push(&mut self, id: i32) {
         self.row2id.push(id);
         self.id2row.insert(id, self.row2id.len() - 1);
         self.data.push(ListItemData {
@@ -39,7 +45,7 @@ impl IdMapData {
         })
     }
 
-    fn set_progress(&mut self, id: i32, progress: f32) {
+    pub fn set_progress(&mut self, id: i32, progress: f32) {
         let row = *self.id2row.get(&id).unwrap();
         self.data.set_row_data(
             row,
@@ -50,12 +56,12 @@ impl IdMapData {
         );
     }
 
-    fn remove_by_id(&mut self, id: i32) {
+    pub fn remove_by_id(&mut self, id: i32) {
         let row = *self.id2row.get(&id).unwrap();
         self.remove_by_row(row);
     }
 
-    fn remove_by_row(&mut self, row: usize) {
+    pub fn remove_by_row(&mut self, row: usize) {
         assert!(0 <= row && row < self.row2id.len());
         let mut r = row + 1;
         while r < self.row2id.len() {
@@ -74,25 +80,22 @@ fn main() {
 
     let ui_handle = ui.as_weak();
 
-    let task_data = Arc::new(Mutex::new(IdMapData::default()));
+    let mut task_data = Rc::new(RefCell::new(IdMapData::default()));
     ui.set_task_data_model(sixtyfps::ModelHandle::new(
-        task_data.lock().unwrap().data.clone(),
+        task_data.as_ref().borrow().data.clone(),
     ));
 
     ui.on_request_increase_value({
-        let task_data = task_data.clone();
+        let mut task_data = task_data.clone();
         move || {
-            let task_data = task_data.clone();
-            thread::spawn(move || {
-                let ui = ui_handle.unwrap();
-                let id = nextId() as i32;
-                task_data.lock().unwrap().push(id);
-                let latency = ui.get_latency();
-                let period = time::Duration::from_millis(((10.0 as f32) * latency) as u64);
-                ui.set_counter(ui.get_counter() + 1);
-                thread::sleep(time::Duration::from_secs(1));
-                task_data.lock().unwrap().remove_by_id(id);
-            });
+            let ui = ui_handle.unwrap();
+            let id = nextId() as i32;
+            (*task_data.borrow_mut()).push(id);
+            let latency = ui.get_latency();
+            let period = time::Duration::from_millis(((10.0 as f32) * latency) as u64);
+            ui.set_counter(ui.get_counter() + 1);
+            //thread::sleep(time::Duration::from_secs(1));
+            //task_data.lock().unwrap().remove_by_id(id);
         }
     });
     ui.run();
