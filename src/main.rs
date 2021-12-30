@@ -1,6 +1,11 @@
-use std::{collections::HashMap, vec::Vec};
+use std::sync::{Arc, Mutex};
+use std::{collections::HashMap, rc::Rc, vec::Vec};
+use tokio::spawn;
 
 sixtyfps::include_modules!();
+mod sync60;
+use sixtyfps::Model;
+use sync60::AsyncVec;
 
 struct IdMap {
     id2row: HashMap<i16, i16>,
@@ -31,9 +36,23 @@ fn main() {
 
     let ui_handle = ui.as_weak();
 
-    ui.on_request_increase_value(move || {
-        let ui = ui_handle.unwrap();
-        ui.set_counter(ui.get_counter() + 1);
+    let list_data = Arc::new(Mutex::new(Rc::new(sixtyfps::VecModel::default())));
+
+    ui.set_task_data_model(sixtyfps::ModelHandle::new(
+        list_data.lock().unwrap().clone(),
+    ));
+
+    ui.on_request_increase_value({
+        let list = list_data.clone();
+        move || {
+            let ui = ui_handle.unwrap();
+            let id = list.row_count() as i32;
+            list.push(ListItemData {
+                id: id,
+                progress: (id * 10) as f32,
+            });
+            ui.set_counter(ui.get_counter() + 1);
+        }
     });
 
     ui.run();
