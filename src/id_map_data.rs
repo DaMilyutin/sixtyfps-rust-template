@@ -1,11 +1,6 @@
 use super::*;
-use std::rc::Rc;
+use sixtyfps::Model;
 use std::{collections::HashMap, vec::Vec};
-
-use futures::future::{Fuse, FusedFuture, FutureExt};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-
-use sixtyfps::{ComponentHandle, Model, ModelHandle, SharedString, VecModel};
 
 pub fn nextId() -> i32 {
     unsafe {
@@ -19,15 +14,13 @@ pub fn nextId() -> i32 {
 pub struct IdMapData {
     pub id2row: HashMap<i32, usize>,
     pub row2id: Vec<i32>,
-    //pub data: Rc<sixtyfps::VecModel<ListItemData>>,
 }
 
 impl IdMapData {
-    pub fn new(data: Rc<sixtyfps::VecModel<ListItemData>>) -> IdMapData {
+    pub fn default() -> IdMapData {
         IdMapData {
             id2row: HashMap::<i32, usize>::default(),
             row2id: Vec::<i32>::default(),
-            //data: data,
         }
     }
 
@@ -76,74 +69,3 @@ impl IdMapData {
         }
     }
 }
-
-pub enum IdMapMessage {
-    PushId { id: i32 },
-    SetProgress { id: i32, progress: f32 },
-    RemoveId { id: i32 },
-    CancelId { id: i32 },
-    Quit,
-}
-
-// pub struct IdMapWorker {
-//     pub channel: UnboundedSender<IdMapMessage>,
-//     id_map_data: Arc<Mutex<IdMapData>>,
-//     worker_thread: std::thread::JoinHandle<()>,
-// }
-
-// impl IdMapWorker {
-//     pub fn new(cargo_ui: &AppWindow, data: Arc<Mutex<IdMapData>>) -> Self {
-//         let (channel, r) = tokio::sync::mpsc::unbounded_channel();
-//         let worker_thread = std::thread::spawn({
-//             let handle_weak = cargo_ui.as_weak();
-//             move || {
-//                 tokio::runtime::Runtime::new()
-//                     .unwrap()
-//                     .block_on(progress_worker_loop(r, handle_weak, data.clone()))
-//                     .unwrap()
-//             }
-//         });
-//         Self {
-//             channel,
-//             id_map_data: data.clone(),
-//             worker_thread,
-//         }
-//     }
-
-//     pub fn join(self) -> std::thread::Result<()> {
-//         let _ = self.channel.send(IdMapMessage::Quit);
-//         self.worker_thread.join()
-//     }
-// }
-
-// async fn progress_worker_loop(
-//     mut r: UnboundedReceiver<IdMapMessage>,
-//     handle: sixtyfps::Weak<AppWindow>,
-//     data: Arc<Mutex<IdMapData>>,
-// ) -> tokio::io::Result<()> {
-//     //let run_app = Fuse::terminated();
-//     //futures::pin_mut!(run_app);
-
-//     loop {
-//         let m = futures::select! {
-//             m = r.recv().fuse() => {
-//                 match m {
-//                     None => return Ok(()),
-//                     Some(m) => m,
-//                 }
-//             }
-//         };
-
-//         match m {
-//             IdMapMessage::PushId { id } => sixtyfps::invoke_from_event_loop({
-//                 let wh = handle.clone();
-//                 let wd = data.clone();
-//                 move || {
-//                     wd.get_mut().push(id);
-//                 }
-//             }),
-//             IdMapMessage::Quit => return Ok(()),
-//             _ => return Ok(()),
-//         };
-//     }
-// }

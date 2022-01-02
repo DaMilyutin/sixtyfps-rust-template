@@ -1,13 +1,10 @@
 sixtyfps::include_modules!();
 
 use sixtyfps::{Model, VecModel};
-use std::borrow::{Borrow, BorrowMut};
-use std::ops::Deref;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time;
-use std::{cell::RefCell, rc::Rc};
-use std::{collections::HashMap, vec::Vec};
 
 mod id_map_data;
 use id_map_data::nextId;
@@ -19,13 +16,12 @@ fn main() {
     let ui_handle = ui.as_weak();
 
     let list_data = Rc::new(VecModel::<ListItemData>::default());
-    let task_data = Arc::new(Mutex::new(IdMapData::new(list_data.clone())));
+    let task_data = Arc::new(Mutex::new(IdMapData::default()));
 
     ui.set_task_data_model(sixtyfps::ModelHandle::new(list_data.clone()));
 
     ui.on_request_increase_value({
         let task_data = task_data.clone();
-        let model_handle = ui.get_task_data_model();
         move || {
             let ui = ui_handle.unwrap();
             let id = nextId() as i32;
@@ -36,7 +32,7 @@ fn main() {
                 .unwrap();
             task_data.lock().as_deref_mut().unwrap().push(data, id);
             let latency = ui.get_latency();
-            let period = time::Duration::from_millis(10);
+            let period = time::Duration::from_millis((latency * 10.) as u64);
 
             let ui_handle = ui.as_weak();
 
@@ -77,9 +73,6 @@ fn main() {
                     ui.set_counter(ui.get_counter() + 1);
                 });
             });
-
-            //thread::sleep(time::Duration::from_secs(1));
-            //task_data.lock().unwrap().remove_by_id(id);
         }
     });
 
